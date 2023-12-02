@@ -5,3 +5,4 @@ authors = ["Reiner Herrmann <reiner@reiner-h.de>"]
 edition = "2021"
 
 [dependencies]
+regex = "1"
