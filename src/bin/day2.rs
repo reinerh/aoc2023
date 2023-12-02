@@ -6,7 +6,7 @@ static DAY: u8 = 2;
 fn main() {
     let input = advent::read_lines(DAY);
     println!("{DAY}a: {}", sum_possible(&input));
-    println!("{DAY}b: {}", 0);
+    println!("{DAY}b: {}", sum_powers(&input));
 }
 
 struct Game {
@@ -43,6 +43,20 @@ impl Game {
         }
         true
     }
+
+    fn power(&self) -> usize {
+        let mut least_amount = HashMap::new();
+        for info in &self.infos {
+            for (color, amount) in info {
+                let least = least_amount.entry(color).or_insert(0);
+                if amount > least {
+                    least_amount.insert(color, *amount);
+                }
+            }
+        }
+        least_amount.values()
+                    .product()
+    }
 }
 
 fn sum_possible(input: &[String]) -> usize {
@@ -60,6 +74,13 @@ fn sum_possible(input: &[String]) -> usize {
          .sum()
 }
 
+fn sum_powers(input: &[String]) -> usize {
+    input.iter()
+         .map(|x| Game::new(x))
+         .map(|g| g.power())
+         .sum()
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -74,5 +95,6 @@ mod tests {
             "Game 5: 6 red, 1 blue, 3 green; 2 blue, 1 red, 2 green",
          ].iter().map(|&x| String::from(x)).collect::<Vec<_>>();
         assert_eq!(sum_possible(&input), 8);
+        assert_eq!(sum_powers(&input), 2286);
     }
 }
