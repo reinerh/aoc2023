@@ -1,47 +1,53 @@
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 
 static DAY: u8 = 3;
 
 fn main() {
     let input = advent::read_lines(DAY);
     println!("{DAY}a: {}", part_sum(&input));
-    println!("{DAY}b: {}", 0);
+    println!("{DAY}b: {}", gear_ratio_sum(&input));
 }
 
-#[derive(Eq, PartialEq, Hash)]
+#[derive(Eq, PartialEq, Clone, Copy, Hash)]
 struct Position {
     x: isize,
     y: isize,
 }
 
 struct Schematics {
-    map: HashMap<Position, char>,
+    part_positions: HashMap<Position, char>,
 }
 
 impl Schematics {
     fn new(input: &[String]) -> Schematics {
-        let mut map = HashMap::new();
+        let mut part_positions = HashMap::new();
         for (y, line) in input.iter().enumerate() {
             for (x, c) in line.chars().enumerate() {
                 if c != '.' {
-                    map.insert(Position { x: x as isize, y: y as isize }, c);
-                }
-            }
-        }
-        Schematics { map }
-    }
-
-    fn has_neighboring_part(&self, pos: &Position) -> bool {
-        for y in -1 ..= 1 {
-            for x in -1 ..= 1 {
-                if let Some(obj) = self.map.get(&Position { x: pos.x + x, y: pos.y + y }) {
-                    if !obj.is_ascii_digit() {
-                        return true;
+                    let pos = Position { x: x as isize, y: y as isize };
+                    if !c.is_ascii_digit() {
+                        part_positions.insert(pos, c);
                     }
                 }
             }
         }
-        false
+        Schematics { part_positions }
+    }
+
+    fn get_neighboring_parts(&self, pos: &Position) -> HashMap<Position, char> {
+        let mut parts = HashMap::new();
+        for y in -1 ..= 1 {
+            for x in -1 ..= 1 {
+                if let Some(part) = self.part_positions.get(&Position { x: pos.x + x, y: pos.y + y}) {
+                    parts.insert(Position { x: pos.x + x, y: pos.y + y }, *part);
+                }
+            }
+        }
+        parts
+    }
+
+    fn has_neighboring_part(&self, pos: &Position) -> bool {
+        !self.get_neighboring_parts(pos).is_empty()
     }
 }
 
@@ -78,6 +84,46 @@ fn part_sum(input: &[String]) -> u32 {
                 .sum()
 }
 
+fn gear_ratio_sum(input: &[String]) -> u32 {
+    let schematics = Schematics::new(input);
+    let mut gear_neighbors = HashMap::<Position, Vec<u32>>::new();
+
+    for (y, line) in input.iter().enumerate() {
+        let mut number = 0;
+        let mut neighbors = HashSet::new();
+        for (x, c) in line.chars().enumerate() {
+            let pos = Position { x: x as isize, y: y as isize };
+            if let Some(digit) = c.to_digit(10) {
+                number *= 10;
+                number += digit;
+                for (pos, c) in schematics.get_neighboring_parts(&pos) {
+                    if c == '*' {
+                        neighbors.insert(pos);
+                    }
+                }
+            } else if number > 0 {
+                /* number ended within a line */
+                for gear in &neighbors {
+                    gear_neighbors.entry(*gear).or_default().push(number);
+                }
+                number = 0;
+                neighbors.clear();
+            }
+        }
+        if number > 0 {
+            /* number ended at the end of line */
+            for gear in &neighbors {
+                gear_neighbors.entry(*gear).or_default().push(number);
+            }
+        }
+    }
+
+    gear_neighbors.iter()
+                  .filter(|(_, numbers)| numbers.len() == 2)
+                  .map(|(_, numbers)| numbers.iter().product::<u32>())
+                  .sum()
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -97,5 +143,6 @@ mod tests {
             ".664.598..",
         ].iter().map(|&x| String::from(x)).collect::<Vec<_>>();
         assert_eq!(part_sum(&input), 4361);
+        assert_eq!(gear_ratio_sum(&input), 467835);
     }
 }
