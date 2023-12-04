@@ -5,7 +5,7 @@ static DAY: u8 = 4;
 fn main() {
     let input = advent::read_lines(DAY);
     println!("{DAY}a: {}", total_points(&input));
-    println!("{DAY}b: {}", 0);
+    println!("{DAY}b: {}", total_cards(&input));
 }
 
 struct Card {
@@ -44,6 +44,23 @@ fn total_points(input: &[String]) -> u32 {
          .sum()
 }
 
+fn total_cards(input: &[String]) -> u32 {
+    let cards = input.iter()
+                     .map(|x| Card::new(x))
+                     .collect::<Vec<_>>();
+    let mut amounts = vec![1; cards.len()];
+
+    for (i, card) in cards.iter().enumerate() {
+        let matches = card.matching_numbers().len();
+        let copies = amounts[i];
+        for amount in amounts.iter_mut().take(i + 1 + matches).skip(i + 1) {
+            *amount += copies;
+        }
+    }
+
+    amounts.iter().sum()
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -59,5 +76,6 @@ mod tests {
             "Card 6: 31 18 13 56 72 | 74 77 10 23 35 67 36 11",
         ].iter().map(|&x| String::from(x)).collect::<Vec<_>>();
         assert_eq!(total_points(&input), 13);
+        assert_eq!(total_cards(&input), 30);
     }
 }
