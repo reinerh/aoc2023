@@ -3,7 +3,7 @@ static DAY: u8 = 5;
 fn main() {
     let input = advent::read_lines(DAY);
     println!("{DAY}a: {}", lowest_location(&input));
-    println!("{DAY}b: {}", 0);
+    println!("{DAY}b: {}", lowest_location2(&input));
 }
 
 #[derive(Clone, Copy)]
@@ -38,15 +38,10 @@ impl RangeCategory {
     }
 }
 
-fn lowest_location(input: &[String]) -> u64 {
-    let (_, seeds_str) = input[0].split_once(": ").unwrap();
-    let seeds = seeds_str.split(' ')
-                         .map(|x| x.parse().unwrap())
-                         .collect::<Vec<u64>>();
-
+fn read_range_map(input: &[String]) -> Vec<RangeCategory> {
     let mut range_maps = Vec::new();
     let mut current_category = Vec::new();
-    for line in input.iter().skip(2) {
+    for line in input.iter() {
         if line.is_empty() {
             range_maps.push(RangeCategory { ranges: current_category.clone() });
             current_category.clear();
@@ -59,6 +54,16 @@ fn lowest_location(input: &[String]) -> u64 {
         current_category.push(RangeMap::new(line));
     }
     range_maps.push(RangeCategory { ranges: current_category.clone() });
+    range_maps
+}
+
+fn lowest_location(input: &[String]) -> u64 {
+    let (_, seeds_str) = input[0].split_once(": ").unwrap();
+    let seeds = seeds_str.split(' ')
+                         .map(|x| x.parse().unwrap())
+                         .collect::<Vec<u64>>();
+
+    let range_maps = read_range_map(&input[2..]);
 
     let mut locations = Vec::new();
     for seed in seeds {
@@ -71,6 +76,31 @@ fn lowest_location(input: &[String]) -> u64 {
 
     *locations.iter().min().unwrap()
 }
+
+fn lowest_location2(input: &[String]) -> u64 {
+    let (_, seeds_str) = input[0].split_once(": ").unwrap();
+    let seeds = seeds_str.split(' ')
+                         .map(|x| x.parse().unwrap())
+                         .collect::<Vec<u64>>();
+
+    let range_maps = read_range_map(&input[2..]);
+
+    let mut lowest_location = u64::max_value();
+    for (i, start) in seeds.iter().enumerate().step_by(2) {
+        let range = seeds[i+1];
+
+        for seed in *start..start+range {
+            let mut next_val = seed;
+            for category in &range_maps {
+                next_val = category.map(next_val);
+            }
+            lowest_location = std::cmp::min(next_val, lowest_location)
+        }
+    }
+
+    lowest_location
+}
+
 
 #[cfg(test)]
 mod tests {
@@ -114,5 +144,6 @@ mod tests {
             "56 93 4"
         ].iter().map(|&x| String::from(x)).collect::<Vec<_>>();
         assert_eq!(lowest_location(&input), 35);
+        assert_eq!(lowest_location2(&input), 46);
     }
 }
