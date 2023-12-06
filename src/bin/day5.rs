@@ -1,3 +1,6 @@
+use std::thread;
+use std::sync::Arc;
+
 static DAY: u8 = 5;
 
 fn main() {
@@ -83,18 +86,38 @@ fn lowest_location2(input: &[String]) -> u64 {
                          .map(|x| x.parse().unwrap())
                          .collect::<Vec<u64>>();
 
-    let range_maps = read_range_map(&input[2..]);
+    let range_maps = Arc::new(read_range_map(&input[2..]));
+
+    const N_THREADS : u64 = 24;
 
     let mut lowest_location = u64::max_value();
     for (i, start) in seeds.iter().enumerate().step_by(2) {
         let range = seeds[i+1];
 
-        for seed in *start..start+range {
-            let mut next_val = seed;
-            for category in &range_maps {
-                next_val = category.map(next_val);
+        let mut threads = Vec::new();
+        let range_per_thread = range / N_THREADS;
+        for t in 0 .. N_THREADS {
+            let range_maps = Arc::clone(&range_maps);
+            let thread_start = start + (t * range_per_thread);
+            let mut thread_end = thread_start + range_per_thread - 1;
+            if t == N_THREADS - 1 {
+                thread_end += range % N_THREADS;
             }
-            lowest_location = std::cmp::min(next_val, lowest_location)
+
+            threads.push(thread::spawn(move || {
+                for seed in thread_start ..= thread_end {
+                    let mut next_val = seed;
+                    for category in range_maps.iter() {
+                        next_val = category.map(next_val);
+                    }
+                    lowest_location = std::cmp::min(next_val, lowest_location)
+                }
+                lowest_location
+            }));
+        }
+
+        for thread in threads {
+            lowest_location = std::cmp::min(thread.join().unwrap(), lowest_location);
         }
     }
 
