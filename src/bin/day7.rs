@@ -1,15 +1,23 @@
 use std::{cmp::Ordering, collections::HashMap};
+use std::sync::Mutex;
 
 static DAY: u8 = 7;
 
+static J_IS_JOKER: Mutex<bool> = Mutex::new(false);
+
 fn main() {
     let input = advent::read_lines(DAY);
-    println!("{DAY}a: {}", winnings(&input));
-    println!("{DAY}b: {}", 0);
+    println!("{DAY}a: {}", winnings_no_joker(&input));
+    println!("{DAY}b: {}", winnings_joker(&input));
+}
+
+fn j_is_joker() -> bool {
+    *J_IS_JOKER.lock().unwrap()
 }
 
 #[derive(Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord)]
 enum Card {
+    Joker,
     Two,
     Three,
     Four,
@@ -31,7 +39,7 @@ impl Card {
             'A' => Card::Ace,
             'K' => Card::King,
             'Q' => Card::Queen,
-            'J' => Card::Jack,
+            'J' => if j_is_joker() { Card::Joker } else { Card::Jack },
             'T' => Card::Ten,
             '9' => Card::Nine,
             '8' => Card::Eight,
@@ -82,6 +90,32 @@ impl HandType {
             HandType::HighCard
         }
     }
+
+    fn from_joker(hand: &Hand) -> HandType {
+        let mut card_counts = HashMap::new();
+        for card in &hand.cards {
+            *card_counts.entry(card).or_insert(0) += 1;
+        }
+        let has_count = |c| {
+            card_counts.iter().filter(|&(&card, &count)| *card != Card::Joker && count == c).count() > 0
+        };
+        let jokers = *card_counts.get(&Card::Joker).unwrap_or(&0);
+        if has_count(5) || (has_count(4) && jokers >= 1) || (has_count(3) && jokers >= 2) || (has_count(2) && jokers >= 3) || jokers >= 4 {
+            HandType::FiveOfAKind
+        } else if has_count(4) || (has_count(3) && jokers >= 1) || (has_count(2) && jokers >= 2) || jokers >= 3 {
+            HandType::FourOfAKind
+        } else if (has_count(3) && has_count(2)) || (has_count(2) && jokers == 1 && card_counts.len() == 3) {
+            HandType::FullHouse
+        } else if has_count(3) || (has_count(2) && jokers >= 1) || jokers >= 2 {
+            HandType::ThreeOfAKind
+        } else if has_count(2) && card_counts.len() == 3 {
+            HandType::TwoPair
+        } else if has_count(2) || (card_counts.len() == 5 && jokers == 1) {
+            HandType::OnePair
+        } else {
+            HandType::HighCard
+        }
+    }
 }
 
 struct Hand {
@@ -103,7 +137,11 @@ impl Hand {
     }
 
     fn hand_type(&self) -> HandType {
-        HandType::from(self)
+        if j_is_joker() {
+            HandType::from_joker(self)
+        } else {
+            HandType::from(self)
+        }
     }
 }
 
@@ -150,6 +188,16 @@ fn winnings(input: &[String]) -> u32 {
          .sum()
 }
 
+fn winnings_no_joker(input: &[String]) -> u32 {
+    *J_IS_JOKER.lock().unwrap() = false;
+    winnings(input)
+}
+
+fn winnings_joker(input: &[String]) -> u32 {
+    *J_IS_JOKER.lock().unwrap() = true;
+    winnings(input)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -163,6 +211,7 @@ mod tests {
             "KTJJT 220",
             "QQQJA 483",
         ].iter().map(|&x| String::from(x)).collect::<Vec<_>>();
-        assert_eq!(winnings(&input), 6440);
+        assert_eq!(winnings_no_joker(&input), 6440);
+        assert_eq!(winnings_joker(&input), 5905);
     }
 }
