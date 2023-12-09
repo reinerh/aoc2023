@@ -2,11 +2,11 @@ static DAY: u8 = 9;
 
 fn main() {
     let input = advent::read_lines(DAY);
-    println!("{DAY}a: {}", sum_extrapolations(&input));
-    println!("{DAY}b: {}", 0);
+    println!("{DAY}a: {}", sum_extrapolations(&input, false));
+    println!("{DAY}b: {}", sum_extrapolations(&input, true));
 }
 
-fn extrapolate(input: &[i32]) -> i32 {
+fn extrapolate(input: &[i32], previous: bool) -> i32 {
     if input.iter().all(|&n| n == 0) {
         /* all zeroes */
         return 0;
@@ -17,13 +17,17 @@ fn extrapolate(input: &[i32]) -> i32 {
                      .windows(2)
                      .map(|x| x[1] - x[0])
                      .collect::<Vec<_>>();
-    input.last().unwrap() + extrapolate(&diffs)
+    if previous {
+        input.first().unwrap() - extrapolate(&diffs, previous)
+    } else {
+        input.last().unwrap() + extrapolate(&diffs, previous)
+    }
 }
 
-fn sum_extrapolations(input: &[String]) -> i32 {
+fn sum_extrapolations(input: &[String], previous: bool) -> i32 {
     input.iter()
          .map(|x| x.split(' ').map(|n| n.parse().unwrap()).collect::<Vec<_>>())
-         .map(|numbers| extrapolate(&numbers))
+         .map(|numbers| extrapolate(&numbers, previous))
          .sum()
 }
 
@@ -38,6 +42,7 @@ mod tests {
             "1 3 6 10 15 21",
             "10 13 16 21 30 45",
         ].iter().map(|&x| String::from(x)).collect::<Vec<_>>();
-        assert_eq!(sum_extrapolations(&input), 114);
+        assert_eq!(sum_extrapolations(&input, false), 114);
+        assert_eq!(sum_extrapolations(&input, true), 2);
     }
 }
