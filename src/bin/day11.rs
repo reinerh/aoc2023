@@ -2,8 +2,8 @@ static DAY: u8 = 11;
 
 fn main() {
     let input = advent::read_lines(DAY);
-    println!("{DAY}a: {}", sum_path_lengths(&input));
-    println!("{DAY}b: {}", 0);
+    println!("{DAY}a: {}", sum_path_lengths(&input, 2));
+    println!("{DAY}b: {}", sum_path_lengths(&input, 1_000_000));
 }
 
 #[derive(PartialEq, Eq)]
@@ -34,7 +34,7 @@ impl GalaxyMap {
         GalaxyMap { galaxies, width, height }
     }
 
-    fn expand_space(&mut self) {
+    fn expand_space(&mut self, factor: isize) {
         let mut columns = Vec::new();
         for x in 0 .. self.width {
             if !self.galaxies.iter().any(|pos| pos.x == x) {
@@ -49,15 +49,15 @@ impl GalaxyMap {
         }
         for x in columns.iter().rev() {
             for galaxy in self.galaxies.iter_mut().filter(|pos| pos.x > *x) {
-                galaxy.x += 1;
+                galaxy.x += factor - 1;
             }
-            self.width += 1;
+            self.width += factor - 1;
         }
         for y in rows.iter().rev() {
             for galaxy in self.galaxies.iter_mut().filter(|pos| pos.y > *y) {
-                galaxy.y += 1;
+                galaxy.y += factor - 1;
             }
-            self.height += 1;
+            self.height += factor - 1;
         }
     }
 
@@ -86,9 +86,9 @@ impl GalaxyMap {
     }
 }
 
-fn sum_path_lengths(input: &[String]) -> isize {
+fn sum_path_lengths(input: &[String], factor: isize) -> isize {
     let mut galaxymap = GalaxyMap::new(input);
-    galaxymap.expand_space();
+    galaxymap.expand_space(factor);
     galaxymap.calculate_distances()
              .iter()
              .sum()
@@ -112,6 +112,8 @@ mod tests {
             ".......#..",
             "#...#.....",
         ].iter().map(|&x| String::from(x)).collect::<Vec<_>>();
-        assert_eq!(sum_path_lengths(&input), 374);
+        assert_eq!(sum_path_lengths(&input, 2), 374);
+        assert_eq!(sum_path_lengths(&input, 10), 1030);
+        assert_eq!(sum_path_lengths(&input, 100), 8410);
     }
 }
