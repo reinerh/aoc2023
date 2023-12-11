@@ -5,7 +5,7 @@ static DAY: u8 = 8;
 fn main() {
     let input = advent::read_lines(DAY);
     println!("{DAY}a: {}", required_steps(&input));
-    println!("{DAY}b: {}", 0);
+    println!("{DAY}b: {}", required_steps_ghost(&input));
 }
 
 #[derive(Clone, Copy)]
@@ -83,11 +83,69 @@ impl Map {
         }
         steps
     }
+
+    fn number_steps_to_z(&self, from: &str) -> (usize, String) {
+        let mut steps = 0;
+        let mut pos = from.to_string();
+        loop {
+            pos = self.next_pos(&pos, steps);
+            steps += 1;
+            if pos.ends_with('Z') {
+                break;
+            }
+        }
+        (steps, pos)
+    }
+
+    fn number_steps_ghost(&self) -> usize {
+        let positions = self.map.keys()
+                                .filter(|pos| pos.ends_with('A'))
+                                .cloned()
+                                .collect::<Vec<_>>();
+
+        let distances_a_to_z = positions.iter()
+                                        .map(|pos| self.number_steps_to_z(pos))
+                                        .collect::<Vec<_>>();
+
+        let distances_z_to_z = distances_a_to_z.iter()
+                                               .map(|(_, pos)| self.number_steps_to_z(pos))
+                                               .collect::<Vec<_>>();
+
+        /* it turns out that distances from xxA to yyZ are the same
+           as from yyZ to yyZ; so no need to deal with offsets. */
+        assert_eq!(distances_a_to_z, distances_z_to_z);
+
+        let cycle_lens = distances_a_to_z.iter()
+                                         .map(|(steps, _)| *steps)
+                                         .collect::<Vec<_>>();
+        let mut steps = lcm(cycle_lens[0], cycle_lens[1]);
+        for cycle_len in cycle_lens.iter().skip(2) {
+            steps = lcm(steps, *cycle_len);
+        }
+        steps
+    }
+}
+
+fn gcd(a: usize, b: usize) -> usize {
+    if b == 0 {
+        a
+    } else {
+        gcd(b, a % b)
+    }
+}
+
+fn lcm(a: usize, b: usize) -> usize {
+    (a*b) / gcd(a, b)
 }
 
 fn required_steps(input: &[String]) -> usize {
     let map = Map::new(input);
     map.number_steps("AAA", "ZZZ")
+}
+
+fn required_steps_ghost(input: &[String]) -> usize {
+    let map = Map::new(input);
+    map.number_steps_ghost()
 }
 
 #[cfg(test)]
@@ -117,5 +175,19 @@ mod tests {
             "ZZZ = (ZZZ, ZZZ)",
         ].iter().map(|&x| String::from(x)).collect::<Vec<_>>();
         assert_eq!(required_steps(&input), 6);
+
+        let input = [
+            "LR",
+            "",
+            "11A = (11B, XXX)",
+            "11B = (XXX, 11Z)",
+            "11Z = (11B, XXX)",
+            "22A = (22B, XXX)",
+            "22B = (22C, 22C)",
+            "22C = (22Z, 22Z)",
+            "22Z = (22B, 22B)",
+            "XXX = (XXX, XXX)",
+        ].iter().map(|&x| String::from(x)).collect::<Vec<_>>();
+        assert_eq!(required_steps_ghost(&input), 6);
     }
 }
