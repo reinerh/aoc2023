@@ -5,7 +5,7 @@ static DAY: u8 = 16;
 fn main() {
     let input = advent::read_lines(DAY);
     println!("{DAY}a: {}", energized_tiles(&input));
-    println!("{DAY}b: {}", 0);
+    println!("{DAY}b: {}", most_energized_tiles(&input));
 }
 
 #[derive(Clone, Copy, PartialEq, Eq, Hash)]
@@ -16,6 +16,7 @@ enum Direction {
     Right,
 }
 
+#[derive(Clone)]
 enum Mirror {
     Backward,
     Forward,
@@ -40,6 +41,7 @@ impl Mirror {
     }
 }
 
+#[derive(Clone)]
 enum Splitter {
     Horizontal,
     Vertical,
@@ -66,6 +68,7 @@ impl Splitter {
     }
 }
 
+#[derive(Clone)]
 enum Object {
     Mirror(Mirror),
     Splitter(Splitter),
@@ -106,6 +109,7 @@ impl Position {
     }
 }
 
+#[derive(Clone)]
 struct Map {
     map: HashMap<Position, Object>,
     energized: HashMap<Position, Vec<Direction>>,
@@ -208,6 +212,23 @@ fn energized_tiles(input: &[String]) -> usize {
     map.tiles_energized()
 }
 
+fn most_energized_tiles(input: &[String]) -> usize {
+    let map = Map::new(input);
+
+    let top = (0 .. map.width).map(|x| Beam { pos: Position { x, y: 0 }, direction: Direction::Down });
+    let bottom = (0 .. map.width).map(|x| Beam { pos: Position { x, y: map.height - 1 }, direction: Direction::Up });
+    let left = (0 .. map.height).map(|y| Beam { pos: Position { x: 0, y }, direction: Direction::Right });
+    let right = (0 .. map.height).map(|y| Beam { pos: Position { x: map.width - 1, y }, direction: Direction::Left });
+
+    let mut most_energized = 0;
+    for beam in top.chain(bottom).chain(left).chain(right) {
+        let mut map = map.clone();
+        map.energize(beam);
+        most_energized = most_energized.max(map.tiles_energized())
+    }
+    most_energized
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -227,5 +248,6 @@ mod tests {
             r"..//.|....",
         ].iter().map(|&x| String::from(x)).collect::<Vec<_>>();
         assert_eq!(energized_tiles(&input), 46);
+        assert_eq!(most_energized_tiles(&input), 51);
     }
 }
